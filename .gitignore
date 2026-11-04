@@ -1,0 +1,10 @@
+# 真實名單、金鑰、查詢紀錄只留在老師電腦,絕不進 git
+data/*
+!data/.gitkeep
+/*.xls
+/*.xlsx
+/*.csv
+
+__pycache__/
+*.pyc
+*.tmp

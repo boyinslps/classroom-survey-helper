@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="資訊老師黃博胤">
+  <title>校園問卷帳密助手 - 老師管理</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="wrap wide">
+    <h1>校園問卷帳密助手・老師管理
+      {% if paused %}<span class="chip warn">查詢已暫停</span>
+      {% else %}<span class="chip ok">學生可查詢</span>{% endif %}
+    </h1>
+    {% for m in get_flashed_messages() %}<div class="flash">{{ m }}</div>{% endfor %}
+
+    <section class="card urls">
+      <h2>請學生打開這個網址</h2>
+      {% if urls %}{% for u in urls %}<code>{{ u }}</code>{% endfor %}
+      {% else %}<p class="muted">偵測不到區網 IP,請確認電腦已連上教室網路。</p>{% endif %}
+      <p class="muted">網址只在教室區網內有效。允許連線的網段:{{ nets | join('、') or '(無)' }}</p>
+    </section>
+
+    <section class="card">
+      <h2>目前班級
+        {% if open_classes %}<span class="chip ok">{{ open_names | join('、') }}</span>
+        {% else %}<span class="chip ok">全部班級</span>{% endif %}
+      </h2>
+      {% if classes %}
+      <form method="post" action="{{ url_for('admin_classes') }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="set">
+        <label for="class-input">輸入班級,例如 505 或 五年五班(多班用逗號分開,留空 = 全部班級)</label>
+        <div class="input-row">
+          <input id="class-input" name="classes" type="text" value="{{ open_classes | join('、') }}" placeholder="留空 = 全部班級" autocomplete="off">
+          <button class="primary" type="submit">套用</button>
+        </div>
+      </form>
+      <form method="post" action="{{ url_for('admin_classes') }}" class="mt">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        {% if paused %}<button class="primary" type="submit" name="action" value="resume">恢復查詢</button>
+        {% else %}<button type="submit" name="action" value="pause">暫停查詢</button>{% endif %}
+      </form>
+      <p class="muted">沒輸入時,全部班級都可以查。輸入後學生只會看到那個班(只有一班時不用再選班級)。名單裡的班級:{% for c, n, _o in classes %}{{ c }}({{ n }}人){{ '、' if not loop.last }}{% endfor %}。每次重新開啟程式會回到全部班級。</p>
+      {% else %}
+      <p class="muted">還沒有名單,請先在下方上傳 Excel。</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>問卷連結
+        {% if surveys %}<span class="chip ok">學生看得到 {{ surveys | length }} 個</span>{% endif %}
+      </h2>
+      <form method="post" action="{{ url_for('admin_survey') }}" id="survey-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="survey-edit-head"><span>名稱</span><span>連結</span><span></span></div>
+        <div id="survey-rows">
+          {% for s in surveys or [{'name': '', 'url': ''}] %}
+          <div class="survey-edit-row">
+            <input type="text" name="name" value="{{ s.name }}" placeholder="例如:生活問卷" maxlength="40" autocomplete="off" aria-label="問卷名稱">
+            <input type="text" name="url" value="{{ s.url }}" placeholder="https://..." autocomplete="off" spellcheck="false" aria-label="問卷連結">
+            <button type="button" class="small danger row-del" title="刪除這一列">刪除</button>
+          </div>
+          {% endfor %}
+        </div>
+        <template id="survey-row-tpl">
+          <div class="survey-edit-row">
+            <input type="text" name="name" placeholder="例如:生活問卷" maxlength="40" autocomplete="off" aria-label="問卷名稱">
+            <input type="text" name="url" placeholder="https://..." autocomplete="off" spellcheck="false" aria-label="問卷連結">
+            <button type="button" class="small danger row-del" title="刪除這一列">刪除</button>
+          </div>
+        </template>
+        <div class="btn-row mt">
+          <button type="button" id="survey-add">＋ 新增連結</button>
+          <button class="primary" type="submit">儲存連結</button>
+        </div>
+      </form>
+      <p class="muted">名稱可以不填(學生會看到「問卷 1」)。改完要按「儲存連結」,學生頁面才會更新;名稱與連結都清空再儲存,就是全部移除。</p>
+    </section>
+
+    <section class="card" id="progress" data-csrf="{{ csrf }}">
+      <div class="head-row">
+        <h2>問卷完成狀況 <span id="progress-sum" class="chip ok hidden"></span></h2>
+        <button id="progress-clear" class="small danger hidden" type="button">清除完成紀錄</button>
+      </div>
+      <div id="progress-body"><p class="muted">載入中…</p></div>
+      <p class="muted">學生按「我已經完成問卷」後,號碼會自動出現在這裡(每 5 秒更新)。按一下號碼可以取消標記。</p>
+    </section>
+
+    <section class="card">
+      <h2>名單({{ total }} 位學生)</h2>
+      <form method="post" action="{{ url_for('admin_upload') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label for="file">上傳 Excel(.xls 或 .xlsx),會取代舊名單並清除完成紀錄</label>
+        <input class="mb" id="file" name="file" type="file" accept=".xls,.xlsx,.csv" required>
+        <div class="btn-row">
+          <button class="primary" type="submit">上傳並匯入</button>
+          <a class="btn" href="{{ url_for('admin_template') }}">下載範本</a>
+        </div>
+      </form>
+      <p class="muted">需要欄位:班級、座號、密碼(帳號建議要有;姓名、學號可有可無,學生端不會顯示)。</p>
+    </section>
+
+    <section class="card">
+      <h2>最近的查詢紀錄</h2>
+      {% if logs %}
+      <table>
+        <tr><th>時間</th><th>來源電腦</th><th>班級</th><th>座號</th><th>結果</th></tr>
+        {% for l in logs %}
+        <tr><td>{{ l.time }}</td><td>{{ l.ip }}</td><td>{{ l.class }}</td><td>{{ l.seat }}</td><td>{{ l.result }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}<p class="muted">目前沒有紀錄。完整紀錄存在 data/query_log.csv(可用 Excel 開啟)。</p>{% endif %}
+    </section>
+
+    <section class="card">
+      <h2>下課 / 安全</h2>
+      <div class="btn-row">
+        <form method="post" action="{{ url_for('admin_quit') }}" data-confirm="確定要關閉程式嗎?關閉後學生就無法查詢。">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="primary" type="submit">下課:關閉程式</button>
+        </form>
+        <form method="post" action="{{ url_for('admin_wipe') }}" data-confirm="確定要刪除全部名單嗎?此動作無法復原。">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="danger" type="submit">刪除全部名單</button>
+        </form>
+      </div>
+      <p class="muted">關閉程式後學生就無法查詢,直接關掉黑色視窗也一樣。名單與完成紀錄會加密保留在這台電腦,下次開啟自動還原,不需要密碼。</p>
+    </section>
+  </main>
+  <div class="credit">made by 資訊老師黃博胤</div>
+  <script src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>

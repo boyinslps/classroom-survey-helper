@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="資訊老師黃博胤">
+  <title>校園問卷帳密助手</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="wrap">
+    <h1>校園問卷帳密助手</h1>
+
+    <section id="survey" class="card hidden">
+      <h2>問卷</h2>
+      <div id="survey-list" class="survey-list"></div>
+    </section>
+
+    <div id="banner" class="notice bad hidden"></div>
+
+    <form id="lookup-form" class="card" autocomplete="off">
+      <div id="class-fixed" class="class-fixed hidden"></div>
+      <div class="row" id="row">
+        <div id="class-wrap">
+          <label for="class">班級</label>
+          <select id="class"><option value="">請選擇</option></select>
+        </div>
+        <div>
+          <label for="seat">座號</label>
+          <input id="seat" type="text" inputmode="numeric" placeholder="輸入座號,或從清單選" list="seat-list">
+          <datalist id="seat-list"></datalist>
+          <div id="seat-name" class="seat-name" aria-live="polite"></div>
+        </div>
+      </div>
+      <button id="submit" class="primary big" type="submit" disabled>查詢</button>
+      <div id="error" class="notice bad hidden mt" role="alert"></div>
+    </form>
+
+    <section id="result" class="card hidden" aria-live="polite">
+      <div id="who" class="who"></div>
+      <div class="result-row">
+        <span class="result-label">帳號</span>
+        <span id="v-account" class="result-value"></span>
+        <button class="copy-btn" type="button" data-target="v-account" data-label="複製">複製</button>
+      </div>
+      <div class="result-row">
+        <span class="result-label">密碼</span>
+        <span id="v-password" class="result-value"></span>
+        <button class="copy-btn" type="button" data-target="v-password" data-label="複製">複製</button>
+      </div>
+      <div class="done-box">
+        <button id="done-btn" class="primary big" type="button">我已經完成問卷</button>
+        <div id="done-ok" class="notice good hidden" role="status">已通知老師 ✓ 你的號碼是 <b id="done-seat"></b> 號</div>
+        <div id="done-error" class="notice bad hidden mt" role="alert"></div>
+      </div>
+    </section>
+
+    <p class="muted">請只查詢自己的資料。每次查詢都會記錄班級、座號與電腦位址。</p>
+  </main>
+  <div class="credit">made by 資訊老師黃博胤</div>
+  <script src="{{ url_for('static', filename='student.js') }}"></script>
+</body>
+</html>
