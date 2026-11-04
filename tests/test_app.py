@@ -159,6 +159,11 @@ raw = A.STUDENTS_FILE.read_bytes()
 ok(b"11251" not in raw and b"21360060101" not in raw, "硬碟上的名單檔看不到明文帳密")
 ok("11251" not in A.LOG_FILE.read_text(encoding="utf-8-sig"), "查詢紀錄不含密碼")
 ok(A.DONE_FILE.exists() and b"101" not in A.DONE_FILE.read_bytes(), "完成紀錄也是加密存檔")
+A.write_log("10.0.0.9", "=cmd|' /C calc'!A0", "@SUM(1)", "查無資料")
+A.write_log("10.0.0.9", "+1", "-2", "查無資料")
+rows = list(A.csv.reader(A.LOG_FILE.read_text(encoding="utf-8-sig").splitlines()))
+bad = [r for r in rows[1:] if r[2][:1] in "=+-@" or r[3][:1] in "=+-@"]
+ok(not bad and any(r[2].startswith("'=cmd") for r in rows), "查詢紀錄的 CSV 不會被當成 Excel 公式執行")
 if A.os.name == "nt":
     ok(A.get_data_key() not in A.KEY_FILE.read_bytes(), "金鑰檔不是明文(受 Windows 帳號保護)")
 A.store.__init__()                                   # 模擬關掉程式再重新開啟

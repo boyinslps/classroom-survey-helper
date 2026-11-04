@@ -565,9 +565,15 @@ def rate_ok(ip: str) -> bool:
 _log_lock = threading.Lock()
 
 
+def csv_safe(text: str) -> str:
+    """學生輸入的字會寫進 CSV;開頭是 = + - @ 時,Excel 會當公式執行,所以前面加單引號擋掉。"""
+    text = text.replace("\r", " ").replace("\n", " ")
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t") else text
+
+
 def write_log(ip: str, cls: str, seat: str, result: str):
     entry = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-             "ip": ip, "class": cls[:20], "seat": seat[:10], "result": result}
+             "ip": ip, "class": csv_safe(cls[:20]), "seat": csv_safe(seat[:10]), "result": result}
     with _log_lock:
         store.log.append(entry)
         try:
